@@ -68,7 +68,7 @@ def natal_chart():
         houses_raw = asc_mc[0]
         asc_deg = houses_raw[0]  # ASC (Ascendant) derecesi
         asc_sign = zodiac_name(asc_deg)
-        rising_sign = asc_sign  # Eski kodda da vardı, koruyoruz
+        rising_sign = asc_sign
 
         planet_codes = {
             'Güneş': swe.SUN,
@@ -158,6 +158,16 @@ def natal_chart():
                 'is_retro': None
             })
 
+        # ASC'yi gezegenler listesine gezegen gibi ekle
+        asc_obj = {
+            'name': 'ASC',
+            'sign': asc_sign,
+            'degree': round(asc_deg % 30, 2),
+            'absolute_long': round(asc_deg, 6),
+            'is_retro': None
+        }
+        planets_with_asc = [asc_obj] + planets
+
         # Evlerin başlangıç dereceleri ve burçları
         houses = []
         for i, deg in enumerate(houses_raw[:12]):
@@ -183,10 +193,10 @@ def natal_chart():
             return None
 
         aspects = []
-        for i in range(len(planets)):
-            for j in range(i + 1, len(planets)):
-                p1 = planets[i]
-                p2 = planets[j]
+        for i in range(len(planets_with_asc)):
+            for j in range(i + 1, len(planets_with_asc)):
+                p1 = planets_with_asc[i]
+                p2 = planets_with_asc[j]
                 long1 = p1['absolute_long']
                 long2 = p2['absolute_long']
                 if long1 is None or long2 is None:
@@ -203,7 +213,7 @@ def natal_chart():
                         'angle': round(diff, 2)
                     })
 
-        print(f"[INFO] Hesaplanan gezegenler: {[p['name'] for p in planets]}")
+        print(f"[INFO] Hesaplanan gezegenler (ASC dahil): {[p['name'] for p in planets_with_asc]}")
         print(f"[INFO] Ev dereceleri: {houses_raw[:12]}")
         print(f"[INFO] Toplam açı: {len(aspects)}")
 
