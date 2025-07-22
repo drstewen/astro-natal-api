@@ -66,8 +66,9 @@ def natal_chart():
 
         asc_mc = swe.houses(jd, lat, lon)
         houses_raw = asc_mc[0]
-        asc_deg = houses_raw[0]
-        rising_sign = zodiac_name(asc_deg)
+        asc_deg = houses_raw[0]  # ASC (Ascendant) derecesi
+        asc_sign = zodiac_name(asc_deg)
+        rising_sign = asc_sign  # Eski kodda da vardı, koruyoruz
 
         planet_codes = {
             'Güneş': swe.SUN,
@@ -163,7 +164,8 @@ def natal_chart():
             houses.append({
                 'number': i + 1,
                 'sign': zodiac_name(deg),
-                'degree': round(deg % 30, 2)
+                'degree': round(deg % 30, 2),
+                'absolute_long': round(deg, 6)
             })
 
         # Aspect hesaplama
@@ -209,6 +211,8 @@ def natal_chart():
             'sun_sign': next((p['sign'] for p in planets if p['name'] == 'Güneş'), ''),
             'moon_sign': next((p['sign'] for p in planets if p['name'] == 'Ay'), ''),
             'rising_sign': rising_sign,
+            'asc_deg': round(asc_deg, 6),
+            'asc_sign': asc_sign,
             'planets': planets,
             'houses': houses,
             'aspects': aspects
