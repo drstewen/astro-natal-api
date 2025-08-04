@@ -233,81 +233,81 @@ def natal_chart():
         print(f"[ERROR] natal_chart endpoint hatası: {err}")
         return jsonify({'error': str(err)}), 500
 
-# ---- AY TAKVİMİ ENDPOINT ve Yardımcı Fonksiyonlar ----
+# === AY TAKVİMİ (Moon Calendar) ENDPOINTİ EKLENDİ ===
 
-# Ay fazlarını tanımla
-MOON_PHASES = [
-    ("New Moon", 0),
-    ("Waxing Crescent", 45),
-    ("First Quarter", 90),
-    ("Waxing Gibbous", 135),
-    ("Full Moon", 180),
-    ("Waning Gibbous", 225),
-    ("Last Quarter", 270),
-    ("Waning Crescent", 315),
-    ("New Moon", 360),
+MOON_PHASES_TR = [
+    ("Yeni Ay", 0),
+    ("İlk Dördün", 90),
+    ("Dolunay", 180),
+    ("Son Dördün", 270)
 ]
-MOON_PHASE_ICONS = {
-    "New Moon": "🌑",
-    "Waxing Crescent": "🌒",
-    "First Quarter": "🌓",
-    "Waxing Gibbous": "🌔",
-    "Full Moon": "🌕",
-    "Waning Gibbous": "🌖",
-    "Last Quarter": "🌗",
-    "Waning Crescent": "🌘"
-}
-def get_moon_phase(angle):
-    for phase, deg in MOON_PHASES:
-        if angle <= deg:
-            return phase
-    return "New Moon"
 
-@app.route('/moon_calendar', methods=['GET'])
+def get_moon_phase(angle):
+    angle = angle % 360
+    for name, degree in MOON_PHASES_TR:
+        diff = abs(angle - degree)
+        if diff < 22:
+            return name
+    # Ara fazlar için basit mantık
+    if 22 <= angle < 67:
+        return "Yeni Ay Büyüyen Hilal"
+    elif 67 <= angle < 112:
+        return "İlk Dördün Büyüyen"
+    elif 112 <= angle < 157:
+        return "Büyüyen Gibbous"
+    elif 157 <= angle < 202:
+        return "Dolunay"
+    elif 202 <= angle < 247:
+        return "Azalan Gibbous"
+    elif 247 <= angle < 292:
+        return "Son Dördün"
+    elif 292 <= angle < 337:
+        return "Azalan Hilal"
+    else:
+        return "Yeni Ay"
+
+@app.route('/moon_calendar', methods=['POST'])
 def moon_calendar():
     try:
-        from calendar import monthrange
-        year = int(request.args.get('year', datetime.now().year))
-        month = int(request.args.get('month', datetime.now().month))
-        tz_offset = float(request.args.get('tz_offset', 3))  # Default Türkiye
-        lat = float(request.args.get('lat', 41.0082))        # Default İstanbul
-        lon = float(request.args.get('lon', 28.9784))
+        data = request.json
+        year = int(data['year'])
+        month = int(data['month'])
+        # İsteğe bağlı: timezone/ülke alınabilir. Default UTC
 
-        days_in_month = monthrange(year, month)[1]
+        results = []
+        # O ayın ilk günü
+        start_date = datetime(year, month, 1)
+        # Son günü bul
+        if month == 12:
+            next_month = datetime(year + 1, 1, 1)
+        else:
+            next_month = datetime(year, month + 1, 1)
+        delta = (next_month - start_date).days
 
-        calendar_data = []
-        for day in range(1, days_in_month + 1):
-            ut_hour = 12 - tz_offset  # Gündüzün ortası
-            jd = swe.julday(year, month, day, ut_hour, swe.GREG_CAL)
+        for day in range(delta):
+            dt = start_date + timedelta(days=day)
+            jd = swe.julday(dt.year, dt.month, dt.day, 0, swe.GREG_CAL)
+            # Ay'ın ekliptik boylamı (0-360)
             moon_pos, _ = swe.calc_ut(jd, swe.MOON)
-            moon_long = moon_pos[0]
-            moon_sign = zodiac_name(moon_long)
-            moon_deg = round(moon_long % 30, 2)
-
+            # Güneş'in ekliptik boylamı (0-360)
             sun_pos, _ = swe.calc_ut(jd, swe.SUN)
-            sun_long = sun_pos[0]
-            phase_angle = (moon_long - sun_long) % 360
-
+            # Ay fazı: (Ay-Güneş) arasındaki açı
+            phase_angle = (moon_pos[0] - sun_pos[0]) % 360
             phase = get_moon_phase(phase_angle)
-            phase_icon = MOON_PHASE_ICONS.get(phase, "")
-
-            calendar_data.append({
-                "date": f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}",
-                "moon_sign": moon_sign,
-                "moon_degree": moon_deg,
-                "phase": phase,
-                "phase_icon": phase_icon,
-                "phase_angle": round(phase_angle, 2)
+            moon_sign = zodiac_name(moon_pos[0])
+            results.append({
+                'date': dt.strftime('%Y-%m-%d'),
+                'moon_sign': moon_sign,
+                'moon_degree': round(moon_pos[0] % 30, 2),
+                'moon_phase': phase,
+                'phase_angle': round(phase_angle, 2)
             })
 
-        return jsonify({
-            "year": year,
-            "month": month,
-            "days": calendar_data
-        })
-    except Exception as e:
-        print(f"[ERROR] moon_calendar endpoint hatası: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'year': year, 'month': month, 'days': results})
+
+    except Exception as err:
+        print(f"[ERROR] moon_calendar endpoint hatası: {err}")
+        return jsonify({'error': str(err)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
