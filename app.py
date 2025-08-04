@@ -270,6 +270,7 @@ def get_moon_phase(angle):
 def moon_calendar():
     try:
         data = request.json
+	print("Gelen veri:", data)
         year = int(data['year'])
         month = int(data['month'])
         # İsteğe bağlı: timezone/ülke alınabilir. Default UTC
