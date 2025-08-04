@@ -233,7 +233,7 @@ def natal_chart():
         print(f"[ERROR] natal_chart endpoint hatası: {err}")
         return jsonify({'error': str(err)}), 500
 
-# === AY TAKVİMİ (Moon Calendar) ENDPOINTİ EKLENDİ ===
+# === AY TAKVİMİ (Moon Calendar) ENDPOINTİ ===
 
 MOON_PHASES_TR = [
     ("Yeni Ay", 0),
@@ -270,7 +270,7 @@ def get_moon_phase(angle):
 def moon_calendar():
     try:
         data = request.json
-	print("Gelen veri:", data)
+        print("Gelen veri:", data)
         year = int(data['year'])
         month = int(data['month'])
         # İsteğe bağlı: timezone/ülke alınabilir. Default UTC
