@@ -17,6 +17,7 @@ except Exception as e:
 import swisseph as swe
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)
@@ -231,6 +232,82 @@ def natal_chart():
     except Exception as err:
         print(f"[ERROR] natal_chart endpoint hatası: {err}")
         return jsonify({'error': str(err)}), 500
+
+# ---- AY TAKVİMİ ENDPOINT ve Yardımcı Fonksiyonlar ----
+
+# Ay fazlarını tanımla
+MOON_PHASES = [
+    ("New Moon", 0),
+    ("Waxing Crescent", 45),
+    ("First Quarter", 90),
+    ("Waxing Gibbous", 135),
+    ("Full Moon", 180),
+    ("Waning Gibbous", 225),
+    ("Last Quarter", 270),
+    ("Waning Crescent", 315),
+    ("New Moon", 360),
+]
+MOON_PHASE_ICONS = {
+    "New Moon": "🌑",
+    "Waxing Crescent": "🌒",
+    "First Quarter": "🌓",
+    "Waxing Gibbous": "🌔",
+    "Full Moon": "🌕",
+    "Waning Gibbous": "🌖",
+    "Last Quarter": "🌗",
+    "Waning Crescent": "🌘"
+}
+def get_moon_phase(angle):
+    for phase, deg in MOON_PHASES:
+        if angle <= deg:
+            return phase
+    return "New Moon"
+
+@app.route('/moon_calendar', methods=['GET'])
+def moon_calendar():
+    try:
+        from calendar import monthrange
+        year = int(request.args.get('year', datetime.now().year))
+        month = int(request.args.get('month', datetime.now().month))
+        tz_offset = float(request.args.get('tz_offset', 3))  # Default Türkiye
+        lat = float(request.args.get('lat', 41.0082))        # Default İstanbul
+        lon = float(request.args.get('lon', 28.9784))
+
+        days_in_month = monthrange(year, month)[1]
+
+        calendar_data = []
+        for day in range(1, days_in_month + 1):
+            ut_hour = 12 - tz_offset  # Gündüzün ortası
+            jd = swe.julday(year, month, day, ut_hour, swe.GREG_CAL)
+            moon_pos, _ = swe.calc_ut(jd, swe.MOON)
+            moon_long = moon_pos[0]
+            moon_sign = zodiac_name(moon_long)
+            moon_deg = round(moon_long % 30, 2)
+
+            sun_pos, _ = swe.calc_ut(jd, swe.SUN)
+            sun_long = sun_pos[0]
+            phase_angle = (moon_long - sun_long) % 360
+
+            phase = get_moon_phase(phase_angle)
+            phase_icon = MOON_PHASE_ICONS.get(phase, "")
+
+            calendar_data.append({
+                "date": f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}",
+                "moon_sign": moon_sign,
+                "moon_degree": moon_deg,
+                "phase": phase,
+                "phase_icon": phase_icon,
+                "phase_angle": round(phase_angle, 2)
+            })
+
+        return jsonify({
+            "year": year,
+            "month": month,
+            "days": calendar_data
+        })
+    except Exception as e:
+        print(f"[ERROR] moon_calendar endpoint hatası: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
